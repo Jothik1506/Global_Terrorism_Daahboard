@@ -1,3 +1,7 @@
+# Final Build Update
+import os
+...
+
 import os
 import warnings
 import zipfile
@@ -11,12 +15,12 @@ warnings.filterwarnings("ignore")
 #  PAGE SETUP
 # ------------------------------------------------------------
 st.set_page_config(
-    page_title="Terrorism Data Dashboard (Final)",
+    page_title="Terrorism Data Dashboard",
     page_icon=":bar_chart:",
     layout="wide"
 )
-st.title("📊 Global Terrorism EDA Dashboard — Final Build")
-st.caption("Combined layout using the original dashboard structure with the simplified home placement from the test view.")
+st.title("📊 Global Terrorism EDA Dashboard")
+st.caption("Interactive dashboard analyzing global terrorism trends.")
 
 st.markdown(
     """
@@ -34,9 +38,6 @@ st.markdown(
 
 px.defaults.template = "plotly_white"
 px.defaults.color_continuous_scale = "Plasma"
-
-# UPDATED: Pointing to the renamed logo file
-SIDEBAR_LOGO = "logo.jpeg" 
 
 # ------------------------------------------------------------
 #  DATA PREPROCESSING
@@ -98,7 +99,6 @@ def load_dataset():
         st.stop()
         
     # CRITICAL: Only load these columns to prevent RAM crash
-    # These are the raw column names from the Global Terrorism Database
     cols_to_keep = [
         'iyear', 'country_txt', 'region_txt', 'attacktype1_txt', 
         'targtype1_txt', 'gname', 'nkill', 'nwound'
@@ -115,24 +115,19 @@ def load_dataset():
                 
                 target_file = csv_files[0]
                 with z.open(target_file) as f:
-                    # usecols limits memory usage
+                    # usecols limits memory usage significantly
                     df_raw = pd.read_csv(f, encoding='latin1', usecols=cols_to_keep)
         
-        # Handle standard CSV
+        # Handle standard CSV (if you unzipped it on the server)
         elif DATA_FILENAME.endswith('.csv'):
              df_raw = pd.read_csv(DATA_FILENAME, encoding='latin1', usecols=cols_to_keep)
         
-        # Handle Excel
         else:
             df_raw = pd.read_excel(DATA_FILENAME, usecols=cols_to_keep)
             
         df = preprocess_data(df_raw)
         return df
 
-    except ValueError as ve:
-        st.error(f"❌ Column Mismatch: {ve}")
-        st.info("The script tried to load specific columns but couldn't find them. Please check your CSV headers.")
-        st.stop()
     except Exception as e:
         st.error(f"❌ Critical Error loading data: {e}")
         st.stop()
@@ -148,10 +143,6 @@ df = load_dataset()
 if df is None:
     st.error("Failed to load data.")
     st.stop()
-
-# Sidebar Logo Setup (Using your new logo)
-if SIDEBAR_LOGO and os.path.exists(SIDEBAR_LOGO):
-    st.sidebar.image(SIDEBAR_LOGO, use_container_width=True)
 
 try:
     mem = df.memory_usage(deep=True).sum() / (1024 * 1024)
