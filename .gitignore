@@ -1,0 +1,40 @@
+# Large data files
+*.csv
+dashboarddata.csv
+dashboard_data.csv
+
+# VS Code installation (shouldn't be in repo)
+Microsoft VS Code/
+
+# Python cache
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+
+# Virtual environments
+venv/
+env/
+ENV/
+
+# IDE
+.vscode/
+.idea/
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Large model files
+*.pth
+*.h5
+*.pkl
+
+# Other requirements files (keep only requirements.txt)
+requirements_dashboard.txt
+requirements_streamlit.txt
+
+# Test files
+testofdashboard.py
+
