@@ -35,7 +35,8 @@ st.markdown(
 px.defaults.template = "plotly_white"
 px.defaults.color_continuous_scale = "Plasma"
 
-SIDEBAR_LOGO = None 
+# UPDATED: Pointing to the renamed logo file
+SIDEBAR_LOGO = "logo.jpeg" 
 
 # ------------------------------------------------------------
 #  DATA PREPROCESSING
@@ -53,35 +54,27 @@ def preprocess_data(df: pd.DataFrame) -> pd.DataFrame:
     }
 
     rename_dict = {}
-    found_year = found_killed = found_wounded = False
-
     for col in df.columns:
         lower = col.lower()
         if lower in col_mapping:
             rename_dict[col] = col_mapping[lower]
-            if lower == 'iyear':
-                found_year = True
-            elif lower == 'nkill':
-                found_killed = True
-            elif lower == 'nwound':
-                found_wounded = True
         else:
             rename_dict[col] = col
 
     df = df.rename(columns=rename_dict)
 
     # Safe handling of Year column
-    if not found_year and 'Year' not in df.columns:
+    if 'Year' not in df.columns:
         df['Year'] = 'Unknown'
     
     # FORCE Year to be string to avoid sorting errors
     df['Year'] = df['Year'].fillna('Unknown').astype(str).str.replace('.0', '', regex=False)
 
-    if not found_killed and 'Killed' not in df.columns:
+    if 'Killed' not in df.columns:
         df['Killed'] = 0
     df['Killed'] = df['Killed'].fillna(0).astype(int)
 
-    if not found_wounded and 'Wounded' not in df.columns:
+    if 'Wounded' not in df.columns:
         df['Wounded'] = 0
     df['Wounded'] = df['Wounded'].fillna(0).astype(int)
 
@@ -92,44 +85,54 @@ def preprocess_data(df: pd.DataFrame) -> pd.DataFrame:
     return df
 
 # ------------------------------------------------------------
-#  DATA LOADING (ZIP FILE SUPPORT)
+#  DATA LOADING (MEMORY OPTIMIZED)
 # ------------------------------------------------------------
 DATA_FILENAME = "dashboard_data.zip" 
 
 @st.cache_data(show_spinner=True)
 def load_dataset():
-    """Load the dataset from ZIP or CSV."""
+    """Load ONLY the necessary columns to save memory."""
     if not os.path.exists(DATA_FILENAME):
         st.error(f"❌ Error: The file '{DATA_FILENAME}' was not found.")
         st.info("Please ensure 'dashboard_data.zip' is uploaded to your GitHub repo.")
         st.stop()
         
+    # CRITICAL: Only load these columns to prevent RAM crash
+    # These are the raw column names from the Global Terrorism Database
+    cols_to_keep = [
+        'iyear', 'country_txt', 'region_txt', 'attacktype1_txt', 
+        'targtype1_txt', 'gname', 'nkill', 'nwound'
+    ]
+
     try:
         # Handle ZIP file
         if DATA_FILENAME.endswith('.zip'):
             with zipfile.ZipFile(DATA_FILENAME, 'r') as z:
-                # Find the CSV inside the zip (ignoring macOS hidden files)
                 csv_files = [f for f in z.namelist() if f.endswith('.csv') and '__MACOSX' not in f]
-                
                 if not csv_files:
                     st.error("❌ Error: No CSV file found inside the ZIP archive.")
                     st.stop()
                 
                 target_file = csv_files[0]
                 with z.open(target_file) as f:
-                    df_raw = pd.read_csv(f, encoding='latin1')
+                    # usecols limits memory usage
+                    df_raw = pd.read_csv(f, encoding='latin1', usecols=cols_to_keep)
         
         # Handle standard CSV
         elif DATA_FILENAME.endswith('.csv'):
-             df_raw = pd.read_csv(DATA_FILENAME, encoding='latin1')
+             df_raw = pd.read_csv(DATA_FILENAME, encoding='latin1', usecols=cols_to_keep)
         
         # Handle Excel
         else:
-            df_raw = pd.read_excel(DATA_FILENAME)
+            df_raw = pd.read_excel(DATA_FILENAME, usecols=cols_to_keep)
             
         df = preprocess_data(df_raw)
         return df
 
+    except ValueError as ve:
+        st.error(f"❌ Column Mismatch: {ve}")
+        st.info("The script tried to load specific columns but couldn't find them. Please check your CSV headers.")
+        st.stop()
     except Exception as e:
         st.error(f"❌ Critical Error loading data: {e}")
         st.stop()
@@ -139,16 +142,20 @@ def load_dataset():
 # ------------------------------------------------------------
 st.sidebar.header("📂 Data Source")
 
-# This creates the 'df' variable globally so it can be used later
+# Load data
 df = load_dataset()
 
 if df is None:
     st.error("Failed to load data.")
     st.stop()
 
+# Sidebar Logo Setup (Using your new logo)
+if SIDEBAR_LOGO and os.path.exists(SIDEBAR_LOGO):
+    st.sidebar.image(SIDEBAR_LOGO, use_container_width=True)
+
 try:
     mem = df.memory_usage(deep=True).sum() / (1024 * 1024)
-    st.sidebar.caption(f"Memory usage: {mem:.1f} MB")
+    st.sidebar.caption(f"RAM usage: {mem:.1f} MB")
 except Exception:
     pass
 
@@ -215,10 +222,11 @@ with st.sidebar.expander("🎛️ Filter Controls", expanded=True):
         if matches:
             selected_countries = matches
 
-    use_sample = st.checkbox("💡 Use sampled data for faster visuals", value=(len(df) > 300_000), key="sample_toggle")
+    # Reduced sample threshold because of memory limits
+    use_sample = st.checkbox("💡 Use sampled data for faster visuals", value=(len(df) > 100_000), key="sample_toggle")
     sample_rows = None
     if use_sample and len(df) > 5000:
-        sample_rows = st.slider("Sample size", 5000, min(len(df), 200_000), 100_000, step=5000)
+        sample_rows = st.slider("Sample size", 5000, min(len(df), 100_000), 50000, step=5000)
 
 df_active = df.copy()
 if use_sample and sample_rows:
@@ -344,7 +352,7 @@ with tab_geo:
         st.info(f"Showing sample rows for {pick_country}")
         st.dataframe(df_filtered[df_filtered['Country'] == pick_country].head(20), use_container_width=True)
     
-    # Creator credits at bottom
+    # Creator credits
     st.markdown("---")
     st.markdown(
         """
