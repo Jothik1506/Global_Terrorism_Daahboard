@@ -37,8 +37,8 @@ px.defaults.template = "plotly_white"
 px.defaults.color_continuous_scale = "Plasma"
 
 # For deployment, these will be optional - users can upload files
-LOCAL_FILE = None  # or "dashboard_data.csv" if you include it in the repo
-SIDEBAR_LOGO = None  # or "logo.jpeg" if you include it in the repo
+LOCAL_FILE = None  
+SIDEBAR_LOGO = None 
 
 # ------------------------------------------------------------
 #  DATA PREPROCESSING
@@ -94,87 +94,40 @@ def preprocess_data(df: pd.DataFrame) -> pd.DataFrame:
 
     return df
 
-
 # ------------------------------------------------------------
-#  DATA LOADING (Cached to prevent repeated uploads)
+#  DATA LOADING (Fixed File Mode - Zipped)
 # ------------------------------------------------------------
-@st.cache_data(show_spinner=True)
-def load_data_from_file(file_path: str) -> Tuple[pd.DataFrame, str]:
-    """Load and preprocess data from local file. Cached to prevent reloading on reruns."""
-    if file_path and os.path.exists(file_path):
-        # Load from local file
-        df_raw = pd.read_csv(file_path, encoding='latin1')
-        source = f"Local: {os.path.basename(file_path)}"
-    else:
-        raise FileNotFoundError(f"File not found: {file_path}")
-    
-    df = preprocess_data(df_raw)
-    return df, source
 
+# !!! We are now using the ZIP file !!!
+DATA_FILENAME = "dashboard_data.zip" 
 
 @st.cache_data(show_spinner=True)
-def load_data_from_upload(uploaded_file) -> Tuple[pd.DataFrame, str]:
-    """Load and preprocess data from uploaded file. Cached by file content."""
-    if uploaded_file is None:
-        raise ValueError("No file uploaded")
-    
-    if uploaded_file.name.lower().endswith('.csv'):
-        df_raw = pd.read_csv(uploaded_file, encoding='latin1')
-    else:
-        df_raw = pd.read_excel(uploaded_file)
-    
-    source = f"Uploaded: {uploaded_file.name}"
-    df = preprocess_data(df_raw)
-    return df, source
-
-
-# Sidebar setup
-if SIDEBAR_LOGO and os.path.exists(SIDEBAR_LOGO):
-    st.sidebar.image(SIDEBAR_LOGO, use_container_width=True)
-elif SIDEBAR_LOGO:
-    st.sidebar.caption("Sidebar logo not found. Update `SIDEBAR_LOGO` path if needed.")
-
-st.sidebar.header("📂 Data Source")
-
-# File uploader
-uploaded_file = st.sidebar.file_uploader(
-    "Upload dataset (.csv/.xlsx)", 
-    type=["csv", "xlsx"],
-    key="data_uploader",
-    help="Upload a new file or use the local file if available."
-)
-
-# Load data (cached, so it won't reload unless file changes)
-try:
-    if uploaded_file is not None:
-        # Use uploaded file (cached by file content)
-        with st.spinner("Loading uploaded data..."):
-            df, source = load_data_from_upload(uploaded_file)
-    else:
-        # Try local file (cached by file path)
-        if LOCAL_FILE and os.path.exists(LOCAL_FILE):
-            with st.spinner("Loading local data..."):
-                df, source = load_data_from_file(file_path=LOCAL_FILE)
-        else:
-            st.warning("⚠️ No local file found. Please upload a dataset using the sidebar uploader.")
-            st.info("💡 Upload a CSV or XLSX file to get started.")
-            st.stop()
-    
-    st.success(f"✅ Loaded {source} • {len(df):,} rows")
+def load_dataset():
+    """Load the fixed dataset from the local directory."""
+    if not os.path.exists(DATA_FILENAME):
+        st.error(f"❌ Error: The file '{DATA_FILENAME}' was not found in the repository.")
+        st.info("Please ensure you have zipped the CSV and uploaded 'dashboard_data.zip' to GitHub.")
+        st.stop()
+        
     try:
-        mem = df.memory_usage(deep=True).sum() / (1024 * 1024)
-        st.caption(f"Approx. memory usage: {mem:.1f} MB")
-    except Exception:
-        pass
-    
-    st.dataframe(df.head(), use_container_width=True)
-except Exception as e:
-    st.error(f"❌ Error loading data: {e}")
-    st.stop()
-
+        # Pandas can read directly from zip files
+        # We assume the zip contains a CSV. 
+        # If it contains Excel, change to pd.read_excel
+        if DATA_FILENAME.endswith('.zip'):
+            df_raw = pd.read_csv(DATA_FILENAME, encoding='latin1', compression='zip')
+        elif DATA_FILENAME.endswith('.csv'):
+             df_raw = pd.read_csv(DATA_FILENAME, encoding='latin1')
+        else:
+            df_raw = pd.read_excel(DATA_FILENAME)
+            
+        df = preprocess_data(df_raw)
+        return df
+    except Exception as e:
+        st.error(f"Error reading the file: {e}")
+        st.stop()
 
 # ------------------------------------------------------------
-#  FILTER CONTROLS (combines sidebar layout + test expander idea)
+#  FILTER CONTROLS
 # ------------------------------------------------------------
 with st.sidebar.expander("🎛️ Filter Controls", expanded=True):
     all_years = sorted(df['Year'].unique().tolist())

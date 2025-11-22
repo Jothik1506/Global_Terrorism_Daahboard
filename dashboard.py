@@ -216,10 +216,10 @@ if df_filtered.empty:
 st.markdown("### Current Filters")
 st.markdown(
     f"""
-    <div style="display:flex;flex-wrap:wrap;gap:8px;">
-      <span style="background:#eef2ff;color:#1e3a8a;padding:4px 8px;border-radius:9999px;">Years: {min_year} - {max_year}</span>
-      <span style="background:#ecfeff;color:#155e75;padding:4px 8px;border-radius:9999px;">Regions: {', '.join(selected_regions) if selected_regions else 'All'}</span>
-      <span style="background:#f0fdf4;color:#166534;padding:4px 8px;border-radius:9999px;">Countries: {len(selected_countries)} selected</span>
+    <div style="display:flex;flex-wrap:wrap;gap:8px;justify-content:center;align-items:center;text-align:center;">
+      <span style="background:#eef2ff;color:#1e3a8a;padding:4px 8px;border-radius:9999px;display:inline-block;">Years: {min_year} - {max_year}</span>
+      <span style="background:#ecfeff;color:#155e75;padding:4px 8px;border-radius:9999px;display:inline-block;">Regions: {', '.join(selected_regions) if selected_regions else 'All'}</span>
+      <span style="background:#f0fdf4;color:#166534;padding:4px 8px;border-radius:9999px;display:inline-block;">Countries: {len(selected_countries)} selected</span>
     </div>
     """,
     unsafe_allow_html=True
