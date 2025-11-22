@@ -1,5 +1,6 @@
 import os
 import warnings
+import zipfile
 from typing import Tuple
 
 import pandas as pd
@@ -36,14 +37,12 @@ st.markdown(
 px.defaults.template = "plotly_white"
 px.defaults.color_continuous_scale = "Plasma"
 
-# For deployment, these will be optional - users can upload files
-LOCAL_FILE = None  
+# For deployment, these will be optional
 SIDEBAR_LOGO = None 
 
 # ------------------------------------------------------------
 #  DATA PREPROCESSING
 # ------------------------------------------------------------
-@st.cache_data(show_spinner=False)
 def preprocess_data(df: pd.DataFrame) -> pd.DataFrame:
     col_mapping = {
         'iyear': 'Year',
@@ -74,13 +73,14 @@ def preprocess_data(df: pd.DataFrame) -> pd.DataFrame:
 
     df = df.rename(columns=rename_dict)
 
+    # Safe handling of Year column
     if not found_year and 'Year' not in df.columns:
-        st.warning("`Year` column missing, filling with 'Unknown'.")
         df['Year'] = 'Unknown'
-    df['Year'] = df['Year'].astype(str)
+    
+    # FORCE Year to be string to avoid sorting errors (Int vs Str)
+    df['Year'] = df['Year'].fillna('Unknown').astype(str).str.replace('.0', '', regex=False)
 
     if not found_killed and 'Killed' not in df.columns:
-        st.warning("`Killed` column missing, filling zeros.")
         df['Killed'] = 0
     df['Killed'] = df['Killed'].fillna(0).astype(int)
 
@@ -95,42 +95,39 @@ def preprocess_data(df: pd.DataFrame) -> pd.DataFrame:
     return df
 
 # ------------------------------------------------------------
-#  DATA LOADING (Fixed File Mode - Zipped)
+#  EXECUTE DATA LOADING
 # ------------------------------------------------------------
+st.sidebar.header("📂 Data Source")
+st.sidebar.success("Data Source: Fixed Repository File")
 
-# !!! We are now using the ZIP file !!!
-DATA_FILENAME = "dashboard_data.zip" 
+# Load the data immediately
+with st.spinner("Loading dashboard data..."):
+    df = load_dataset()
 
-@st.cache_data(show_spinner=True)
-def load_dataset():
-    """Load the fixed dataset from the local directory."""
-    if not os.path.exists(DATA_FILENAME):
-        st.error(f"❌ Error: The file '{DATA_FILENAME}' was not found in the repository.")
-        st.info("Please ensure you have zipped the CSV and uploaded 'dashboard_data.zip' to GitHub.")
-        st.stop()
-        
-    try:
-        # Pandas can read directly from zip files
-        # We assume the zip contains a CSV. 
-        # If it contains Excel, change to pd.read_excel
-        if DATA_FILENAME.endswith('.zip'):
-            df_raw = pd.read_csv(DATA_FILENAME, encoding='latin1', compression='zip')
-        elif DATA_FILENAME.endswith('.csv'):
-             df_raw = pd.read_csv(DATA_FILENAME, encoding='latin1')
-        else:
-            df_raw = pd.read_excel(DATA_FILENAME)
-            
-        df = preprocess_data(df_raw)
-        return df
-    except Exception as e:
-        st.error(f"Error reading the file: {e}")
-        st.stop()
+# Safety Check: If df didn't load, stop everything
+if df is None:
+    st.error("Failed to load data. Variable 'df' is None.")
+    st.stop()
+
+# Display memory usage quietly
+try:
+    mem = df.memory_usage(deep=True).sum() / (1024 * 1024)
+    st.sidebar.caption(f"Memory usage: {mem:.1f} MB")
+except Exception:
+    pass
+
 
 # ------------------------------------------------------------
 #  FILTER CONTROLS
 # ------------------------------------------------------------
 with st.sidebar.expander("🎛️ Filter Controls", expanded=True):
+    # Safety check: ensure Year column has data
+    if 'Year' not in df.columns or df['Year'].empty:
+        st.error("The 'Year' column is missing or empty. Please check your dataset.")
+        st.stop()
+
     all_years = sorted(df['Year'].unique().tolist())
+    
     if not all_years:
         st.error("No Year data available.")
         st.stop()
@@ -499,4 +496,3 @@ with tab_quality:
         </div>
         """,
         unsafe_allow_html=True
-    )
