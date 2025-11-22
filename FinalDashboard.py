@@ -1,8 +1,6 @@
 import os
 import warnings
 import zipfile
-from typing import Tuple
-
 import pandas as pd
 import plotly.express as px
 import streamlit as st
@@ -37,7 +35,6 @@ st.markdown(
 px.defaults.template = "plotly_white"
 px.defaults.color_continuous_scale = "Plasma"
 
-# For deployment, these will be optional
 SIDEBAR_LOGO = None 
 
 # ------------------------------------------------------------
@@ -77,7 +74,7 @@ def preprocess_data(df: pd.DataFrame) -> pd.DataFrame:
     if not found_year and 'Year' not in df.columns:
         df['Year'] = 'Unknown'
     
-    # FORCE Year to be string to avoid sorting errors (Int vs Str)
+    # FORCE Year to be string to avoid sorting errors
     df['Year'] = df['Year'].fillna('Unknown').astype(str).str.replace('.0', '', regex=False)
 
     if not found_killed and 'Killed' not in df.columns:
@@ -95,37 +92,70 @@ def preprocess_data(df: pd.DataFrame) -> pd.DataFrame:
     return df
 
 # ------------------------------------------------------------
-#  EXECUTE DATA LOADING
+#  DATA LOADING (ZIP FILE SUPPORT)
+# ------------------------------------------------------------
+DATA_FILENAME = "dashboard_data.zip" 
+
+@st.cache_data(show_spinner=True)
+def load_dataset():
+    """Load the dataset from ZIP or CSV."""
+    if not os.path.exists(DATA_FILENAME):
+        st.error(f"❌ Error: The file '{DATA_FILENAME}' was not found.")
+        st.info("Please ensure 'dashboard_data.zip' is uploaded to your GitHub repo.")
+        st.stop()
+        
+    try:
+        # Handle ZIP file
+        if DATA_FILENAME.endswith('.zip'):
+            with zipfile.ZipFile(DATA_FILENAME, 'r') as z:
+                # Find the CSV inside the zip (ignoring macOS hidden files)
+                csv_files = [f for f in z.namelist() if f.endswith('.csv') and '__MACOSX' not in f]
+                
+                if not csv_files:
+                    st.error("❌ Error: No CSV file found inside the ZIP archive.")
+                    st.stop()
+                
+                target_file = csv_files[0]
+                with z.open(target_file) as f:
+                    df_raw = pd.read_csv(f, encoding='latin1')
+        
+        # Handle standard CSV
+        elif DATA_FILENAME.endswith('.csv'):
+             df_raw = pd.read_csv(DATA_FILENAME, encoding='latin1')
+        
+        # Handle Excel
+        else:
+            df_raw = pd.read_excel(DATA_FILENAME)
+            
+        df = preprocess_data(df_raw)
+        return df
+
+    except Exception as e:
+        st.error(f"❌ Critical Error loading data: {e}")
+        st.stop()
+
+# ------------------------------------------------------------
+#  EXECUTE LOAD
 # ------------------------------------------------------------
 st.sidebar.header("📂 Data Source")
-st.sidebar.success("Data Source: Fixed Repository File")
 
-# Load the data immediately
-with st.spinner("Loading dashboard data..."):
-    df = load_dataset()
+# This creates the 'df' variable globally so it can be used later
+df = load_dataset()
 
-# Safety Check: If df didn't load, stop everything
 if df is None:
-    st.error("Failed to load data. Variable 'df' is None.")
+    st.error("Failed to load data.")
     st.stop()
 
-# Display memory usage quietly
 try:
     mem = df.memory_usage(deep=True).sum() / (1024 * 1024)
     st.sidebar.caption(f"Memory usage: {mem:.1f} MB")
 except Exception:
     pass
 
-
 # ------------------------------------------------------------
 #  FILTER CONTROLS
 # ------------------------------------------------------------
 with st.sidebar.expander("🎛️ Filter Controls", expanded=True):
-    # Safety check: ensure Year column has data
-    if 'Year' not in df.columns or df['Year'].empty:
-        st.error("The 'Year' column is missing or empty. Please check your dataset.")
-        st.stop()
-
     all_years = sorted(df['Year'].unique().tolist())
     
     if not all_years:
@@ -190,7 +220,6 @@ with st.sidebar.expander("🎛️ Filter Controls", expanded=True):
     if use_sample and len(df) > 5000:
         sample_rows = st.slider("Sample size", 5000, min(len(df), 200_000), 100_000, step=5000)
 
-
 df_active = df.copy()
 if use_sample and sample_rows:
     df_active = df.sample(sample_rows, random_state=42)
@@ -207,7 +236,6 @@ if df_filtered.empty:
     st.warning("No data matches the selected filters.")
     st.stop()
 
-
 # ------------------------------------------------------------
 #  FILTER SUMMARY
 # ------------------------------------------------------------
@@ -222,7 +250,6 @@ st.markdown(
     """,
     unsafe_allow_html=True
 )
-
 
 # ------------------------------------------------------------
 #  KPIs
@@ -262,14 +289,12 @@ with col4:
 
 st.markdown("---")
 
-
 # ------------------------------------------------------------
 #  VISUALIZATION TABS
 # ------------------------------------------------------------
 tab_geo, tab_time, tab_attack, tab_quality = st.tabs([
     "🌍 Geography", "📈 Time Trends", "🎯 Attacks & Groups", "🧮 Data Quality"
 ])
-
 
 with tab_geo:
     st.subheader("World View")
@@ -332,7 +357,6 @@ with tab_geo:
         unsafe_allow_html=True
     )
 
-
 with tab_time:
     st.subheader("Trend Analysis")
     df_time = df_filtered.groupby('Year').agg(
@@ -368,7 +392,6 @@ with tab_time:
         mime="text/csv"
     )
     
-    # Creator credits at bottom
     st.markdown("---")
     st.markdown(
         """
@@ -380,7 +403,6 @@ with tab_time:
         """,
         unsafe_allow_html=True
     )
-
 
 with tab_attack:
     col_left, col_right = st.columns(2)
@@ -427,7 +449,6 @@ with tab_attack:
         fig_groups.update_yaxes(autorange='reversed')
         st.plotly_chart(fig_groups, use_container_width=True)
     
-    # Creator credits at bottom
     st.markdown("---")
     st.markdown(
         """
@@ -439,7 +460,6 @@ with tab_attack:
         """,
         unsafe_allow_html=True
     )
-
 
 with tab_quality:
     st.subheader("Data Quality Checks")
@@ -485,7 +505,6 @@ with tab_quality:
                 )
     st.success("Quality review complete.")
     
-    # Creator credits at bottom
     st.markdown("---")
     st.markdown(
         """
@@ -496,3 +515,4 @@ with tab_quality:
         </div>
         """,
         unsafe_allow_html=True
+    )
