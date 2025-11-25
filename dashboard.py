@@ -84,7 +84,7 @@ def preprocess_data(df):
 # --- FILE UPLOADER AND DATA LOADING ---
 
 # Optional Data area (logo/branding)
-_logo_path = r"D:\VS CODE\Python\WhatsApp Image 2025-11-11 at 7.19.27 PM.jpeg"
+_logo_path = r"/LOGO.jpg"
 if os.path.exists(_logo_path):
     st.sidebar.image(_logo_path, use_container_width=True)
 else:
