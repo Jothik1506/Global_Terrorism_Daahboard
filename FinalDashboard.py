@@ -349,8 +349,7 @@ with tab_geo:
         """
         <div style="display: flex; flex-direction: column; align-items: center; gap: 8px; padding: 15px; margin-top: 30px; color: #666; font-size: 0.85em; border-top: 1px solid #e0e0e0;">
             <div><strong>This Dataset is Created by:</strong></div>
-            <div>Jothik Kanth - 23STUCHH011556</div>
-            <div>Bhavya Dora - 23STUCHH010495</div>
+            <div>Vanam Jothik Krishna Siva Naga Sai Kanth</div>
         </div>
         """,
         unsafe_allow_html=True
@@ -396,8 +395,7 @@ with tab_time:
         """
         <div style="display: flex; justify-content: center; align-items: center; gap: 30px; padding: 15px; margin-top: 30px; color: #666; font-size: 0.85em; border-top: 1px solid #e0e0e0;">
             <div><strong>This Dataset is Created by:</strong></div>
-            <div>Jothik Kanth - 23STUCHH011556</div>
-            <div>Bhavya Dora - 23STUCHH010495</div>
+            <div>Vanam Jothik Krishna Siva Naga Sai Kanth</div>
         </div>
         """,
         unsafe_allow_html=True
@@ -453,8 +451,7 @@ with tab_attack:
         """
         <div style="display: flex; justify-content: center; align-items: center; gap: 30px; padding: 15px; margin-top: 30px; color: #666; font-size: 0.85em; border-top: 1px solid #e0e0e0;">
             <div><strong>This Dataset is Created by:</strong></div>
-            <div>Jothik Kanth - 23STUCHH011556</div>
-            <div>Bhavya Dora - 23STUCHH010495</div>
+            <div>Vanam Jothik Krishna Siva Naga Sai Kanth</div>
         </div>
         """,
         unsafe_allow_html=True
