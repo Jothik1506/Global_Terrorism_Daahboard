@@ -135,7 +135,7 @@ def load_dataset():
 # ------------------------------------------------------------
 #  EXECUTE LOAD
 # ------------------------------------------------------------
-st.sidebar.image("LOGO.jpeg", use_container_width=True)
+st.sidebar.image("LOGO.jpg", use_container_width=True)
 st.sidebar.header("📂 Data Source")
 
 # Load data
