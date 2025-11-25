@@ -135,6 +135,8 @@ def load_dataset():
 # ------------------------------------------------------------
 #  EXECUTE LOAD
 # ------------------------------------------------------------
+st.sidebar.image("D:\VS CODE\Python\WhatsApp Image 2025-11-11 at 7.19.27 PM.jpeg", use_container_width=True)
+
 st.sidebar.header("📂 Data Source")
 
 # Load data
